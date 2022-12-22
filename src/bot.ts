@@ -1,7 +1,8 @@
-import { Action, createActions } from "./Action"
-import { EPlayer } from "./Game"
+import { Action, createBuildActions, createMoveAndSpawnActions } from "./Action"
+import { EPlayer, Turn } from "./Game"
 import { readTurn } from "./input"
 import { outputWait } from "./output"
+import { orderBy, prefix } from "./Tools"
 
 const initialInputs = readline().split(" ")
 const gridWidth = parseInt(initialInputs[0])
@@ -10,22 +11,43 @@ const gridHeight = parseInt(initialInputs[1])
 // noinspection InfiniteLoopJS
 while (true) {
 
-   const turn = readTurn(gridWidth, gridHeight)
+   let turn = readTurn(gridWidth, gridHeight)
 
-   const actions =
-      createActions(EPlayer.Me, turn)
-      .sort((a, b) => a.score / a.cost - b.score / b.cost)
-      .reverse()
+   const { buildActionExecuted, buildOutput, buildTurn } =
+      prefix(executeBuildActions(EPlayer.Me, turn), "build")
 
-   let output = ""
+   const { moveAndSpawnActionExecuted, moveAndSpawnOutput } =
+      prefix(executeMoveAndSpawnActions(EPlayer.Me, buildTurn), "moveAndSpawn")
 
-   let matter = turn.player.Me.matter
+   if (!buildActionExecuted && !moveAndSpawnActionExecuted) {
+      console.log(outputWait())
+   } else {
+      console.log(buildOutput + moveAndSpawnOutput)
+   }
+}
+
+function executeBuildActions(player: EPlayer, turn: Turn) {
+   return executeActions(player, turn, createBuildActions(player, turn))
+}
+
+function executeMoveAndSpawnActions(player: EPlayer, turn: Turn) {
+   return executeActions(player, turn, createMoveAndSpawnActions(player, turn))
+}
+
+function executeActions(player: EPlayer, turn: Turn, actions: Action[])
+   : { output: string, turn: Turn, actionExecuted: boolean } {
 
    let actionExecuted = false
 
-   while (actions.length > 0) {
+   const moveAndSpawnActions = orderBy(actions, action => action.score / action.cost).reverse()
 
-      const nextAction = actions.pop()
+   let matter = turn.player[player].matter
+
+   let output = ""
+
+   while (moveAndSpawnActions.length > 0) {
+
+      const nextAction = moveAndSpawnActions.pop()
 
       if (nextAction.cost > matter) {
          continue
@@ -37,10 +59,18 @@ while (true) {
       actionExecuted = true
    }
 
-   if (!actionExecuted) {
-      output += outputWait()
+   return {
+      output,
+      turn: {
+         ...turn,
+         player: {
+            ...turn.player,
+            [player]: {
+               ...turn.player[player],
+               matter,
+            },
+         },
+      },
+      actionExecuted,
    }
-
-   console.log(output)
 }
-

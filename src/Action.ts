@@ -1,14 +1,12 @@
-﻿import { Board, EPlayer, Turn } from "./Game"
+﻿import { Board, Cell, EPlayer, Turn } from "./Game"
 import { GridIdx } from "./Grid"
 import { outputBuild, outputMove, outputSpawn, outputWait } from "./output"
 
-
-export function createActions(player: EPlayer, turn: Turn): Action[] {
+export function createBuildActions(player: EPlayer, turn: Turn): Action[] {
 
    const actions: Action[] = []
 
-   if (turn.player.Me.recyclers < 2) {
-      // console.error(recyclerPositionsWithScores(turn.board))
+   if (turn.player[player].recyclers < 2 && turn.player[player].matter >= 10) {
       const pos = recyclerPositionsWithScores(turn.board)[0]?.pos
       if (pos) {
          actions.push(buildAction(pos, 1))
@@ -20,6 +18,17 @@ export function createActions(player: EPlayer, turn: Turn): Action[] {
    return actions
 }
 
+export function createMoveAndSpawnActions(player: EPlayer, turn: Turn): Action[] {
+
+   const actions: Action[] = []
+
+   actions.push(...moves(player, turn.board))
+   actions.push(...spawns(player, turn))
+
+   return actions
+}
+
+// TODO player - "canBuild" ist immer für Me
 function recyclerPositionsWithScores(board: Board): { pos: GridIdx, score: number }[] {
    return board
    .flatten()
@@ -43,7 +52,7 @@ function moves(player: EPlayer, board: Board): MoveAction[] {
       if (targets.length > 0) {
          const unitsPerUnownedCell = Math.floor(cell.units / targets.length)
          let units = cell.units
-         if(unitsPerUnownedCell > 0) {
+         if (unitsPerUnownedCell > 0) {
             for (const target of targets) {
                actions.push(moveAction(unitsPerUnownedCell, cellIdx, target.cellIdx, target.score))
                units -= unitsPerUnownedCell
@@ -53,8 +62,42 @@ function moves(player: EPlayer, board: Board): MoveAction[] {
             actions.push(moveAction(units, cellIdx, targets[0].cellIdx, targets[0].score))
          }
       }
+      
       return actions
    })
+}
+
+function spawns(player: EPlayer, turn: Turn): SpawnAction[] {
+
+   const actions = [] as SpawnAction[]
+
+   turn.board.iterate(
+      (cell, idx) => {
+         if (cell.owner === player && !cell.recycler) {
+            const numberOfUnownedNeighbours =
+               turn.board.sumNeighbours(
+                  idx,
+                  cell =>
+                     cell.owner === EPlayer.opponent(player) || (!cell.owner && cell.scrap != 0)
+                     ? 1
+                     : 0)
+            const sumOfDistancesToAllOtherBots =
+               turn.board.sum(
+                  (c, i) => {
+                     if (c.owner === player && c.units > 0) {
+                        return turn.board.bfsDist(
+                           idx,
+                           i,
+                           cell => (!!cell.owner || cell.scrap > 0) && !cell.recycler)
+                     } else {
+                        return 0
+                     }
+                  })
+            actions.push(spawnAction(1, idx, numberOfUnownedNeighbours))
+         }
+      })
+
+   return actions
 }
 
 function unownedCells(player: EPlayer, board: Board, pos: GridIdx) {
@@ -66,8 +109,10 @@ function unownedCells(player: EPlayer, board: Board, pos: GridIdx) {
          if (cell.owner !== player && cell.scrap > 0) {
             cells.push({ cellIdx, enemyUnits: cell.units, score: 2 - distance })
          }
-         return distance < 2
-      })
+         //return distance < 2
+         return true
+      },
+      Cell.isPath)
    return cells
 }
 

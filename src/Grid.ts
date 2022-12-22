@@ -1,5 +1,5 @@
-﻿import { bfs } from "./Bfs"
-import { dijkstra } from "./Dijkstra"
+﻿import { bfs, bfsDist } from "./Bfs"
+import { dijkstra, dijkstraDist } from "./Dijkstra"
 
 export class Grid<TCell> {
 
@@ -148,19 +148,55 @@ export class Grid<TCell> {
       }
    }
 
-   bfs(startIdx: GridIdx, visit: (fromIdx: GridIdx, toIdx: GridIdx, depth: number) => boolean): void {
+   bfsDist(
+      startIdx: GridIdx,
+      targetIdx: GridIdx,
+      filter: (cell: TCell, idx: GridIdx) => boolean,
+   ): number {
+      return bfsDist(
+         this.width,
+         this.height,
+         startIdx,
+         targetIdx,
+         idx => GridIdx.neighbours(idx),
+         cellIdx => filter(this.cell(cellIdx), cellIdx))
+   }
+
+   bfs(
+      startIdx: GridIdx,
+      visit: (fromIdx: GridIdx, toIdx: GridIdx, depth: number) => boolean,
+      filter: (cell: TCell, idx: GridIdx) => boolean,
+   ): void {
       bfs(
          this.width,
          this.height,
          startIdx,
          visit,
-         idx => GridIdx.neighbours(idx))
+         idx => GridIdx.neighbours(idx),
+         cellIdx => filter(this.cell(cellIdx), cellIdx))
+   }
+
+   dijkstraDist(
+      startIdx: GridIdx,
+      targetIdx: GridIdx,
+      computeCosts: (fromIdx: GridIdx, toIdx: GridIdx) => number,
+      filter: (cell: TCell, idx: GridIdx) => boolean,
+   ): number {
+      return dijkstraDist(
+         this.width,
+         this.height,
+         startIdx,
+         targetIdx,
+         idx => GridIdx.neighbours(idx),
+         computeCosts,
+         cellIdx => filter(this.cell(cellIdx), cellIdx))
    }
 
    dijkstra(
       startIdx: GridIdx,
       visit: (fromIdx: GridIdx, toIdx: GridIdx, depth: number, costs: number) => boolean,
       computeCosts: (fromIdx: GridIdx, toIdx: GridIdx) => number,
+      filter: (cell: TCell, idx: GridIdx) => boolean,
    ): void {
       dijkstra(
          this.width,
@@ -168,7 +204,8 @@ export class Grid<TCell> {
          startIdx,
          visit,
          idx => GridIdx.neighbours(idx),
-         computeCosts)
+         computeCosts,
+         cellIdx => filter(this.cell(cellIdx), cellIdx))
    }
 }
 
