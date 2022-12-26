@@ -1,24 +1,18 @@
-﻿import { Board, Cell, EPlayer, Turn } from "./Game"
+﻿import { Board, Cell, GameState, Owner, PlayerState } from "./GameState"
 
-export function readTurn(width: number, height: number): Turn {
+export function readGameState(width: number, height: number, turn: number): GameState {
 
    const inputs = readline().split(" ")
 
    const board = readBoard(width, height)
 
    return {
-      player: {
-         Me: {
-            matter: parseInt(inputs[0]),
-            recyclers: board.sum(cell => cell.owner === EPlayer.Me && cell.recycler ? 1 : 0),
-            bots: board.sum(cell => cell.owner === EPlayer.Me ? cell.units : 0),
-         },
-         Opp: {
-            matter: parseInt(inputs[1]),
-            recyclers: board.sum(cell => cell.owner === EPlayer.Opp && cell.recycler ? 1 : 0),
-            bots: board.sum(cell => cell.owner === EPlayer.Opp ? cell.units : 0),
-         },
-      },
+      turn,
+      player: [0, 1].map(player => ({
+         matter: parseInt(inputs[1]),
+         recyclers: board.sum(cell => cell.owner === player && cell.recycler ? 1 : 0),
+         bots: board.sum(cell => cell.owner === player ? cell.units : 0),
+      })) as [PlayerState, PlayerState],
       board,
    }
 }
@@ -49,7 +43,7 @@ function readCell(): Cell {
    }
 }
 
-function parseOwner(input: string): EPlayer | null {
-   const owner = parseInt(input)
-   return owner === 1 ? EPlayer.Me : owner === 0 ? EPlayer.Opp : null
+function parseOwner(input: string): Owner {
+   let parsedOwner = parseInt(input) as -1 | 0 | 1
+   return parsedOwner === -1 ? null : parsedOwner
 }

@@ -1,28 +1,32 @@
-﻿import { Grid } from "./Grid"
+﻿import { Grid, GridIdx } from "./Grid"
 
-export enum EPlayer {
-   Me = "Me",
-   Opp = "Opp",
-}
 
-export module EPlayer {
-   export function opponent(player: EPlayer) {
-      return player === EPlayer.Me ? EPlayer.Opp : EPlayer.Me
-   }
-}
-
-export interface Turn {
-   player: {
-      [EPlayer.Me]: PlayerState
-      [EPlayer.Opp]: PlayerState
-   }
+export interface GameState {
+   turn: number
+   player: [PlayerState, PlayerState]
    board: Board
 }
 
-// export module Turn {
-//   
-//    export function setMatter(player: EPlayer)
-// }
+export module GameState {
+
+   export function clone(state: GameState): GameState {
+      return {
+         turn: state.turn,
+         player: [{ ...state.player[0] }, { ...state.player[1] }],
+         board: state.board.clone(),
+      }
+   }
+}
+
+export type Owner = Player | null
+
+export type Player = 0 | 1
+
+export module Player {
+   export function opponent(player: Player): Player {
+      return player === 0 ? 1 : 0
+   }
+}
 
 export interface PlayerState {
    matter: number
@@ -56,17 +60,29 @@ export interface PlayerState {
 
 export class Board extends Grid<Cell> {
 
+   clone(): Board {
+      return new Board(this.width, this.height, idx => this.cell(idx))
+   }
+
+   iterateRecyclers(handleRecycler: (idx: GridIdx) => void) {
+      return this.iterate((cell, idx) => {
+         if (cell.recycler) {
+            handleRecycler(idx)
+         }
+      })
+   }
 }
 
 export interface Cell {
    scrap: number
-   owner: EPlayer | null
+   owner: Owner
    units: number
    recycler: boolean
    inRangeOfRecycler: boolean
    canBuild: boolean
    canSpawn: boolean
 }
+
 export module Cell {
    export function isPath(cell: Cell): boolean {
       return !cell.recycler && cell.scrap > 0

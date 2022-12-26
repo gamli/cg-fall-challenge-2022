@@ -1,5 +1,5 @@
-﻿import { bfs, bfsDist } from "./Bfs"
-import { dijkstra, dijkstraDist } from "./Dijkstra"
+﻿import { bfs, bfsDist, BfsVisitor } from "./Bfs"
+import { dijkstra, dijkstraDist, DijkstraVisitor } from "./Dijkstra"
 
 export class Grid<TCell> {
 
@@ -43,6 +43,12 @@ export class Grid<TCell> {
       this._data[idx.y][idx.x] = value
       if (this._filter) {
          this._dataFilter[idx.y][idx.x] = this._filter(value, idx)
+      }
+   }
+   
+   setAllCells(value: TCell) {
+      for (let i = 0; i < this._data.length; i++) {
+         this._data[i].fill(value)
       }
    }
 
@@ -164,7 +170,7 @@ export class Grid<TCell> {
 
    bfs(
       startIdx: GridIdx,
-      visit: (fromIdx: GridIdx, toIdx: GridIdx, depth: number) => boolean,
+      visit: BfsVisitor,
       filter: (cell: TCell, idx: GridIdx) => boolean,
    ): void {
       bfs(
@@ -194,7 +200,7 @@ export class Grid<TCell> {
 
    dijkstra(
       startIdx: GridIdx,
-      visit: (fromIdx: GridIdx, toIdx: GridIdx, depth: number, costs: number) => boolean,
+      visit: DijkstraVisitor,
       computeCosts: (fromIdx: GridIdx, toIdx: GridIdx) => number,
       filter: (cell: TCell, idx: GridIdx) => boolean,
    ): void {

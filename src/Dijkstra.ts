@@ -1,5 +1,7 @@
+import { PredecessorGrid } from "./GraphSearch"
 import { Grid, GridIdx } from "./Grid"
 import { PriorityQueue } from "./PriorityQueue"
+import { memoize } from "./Tools"
 
 export function dijkstraDist(
    gridWidth: number,
@@ -35,32 +37,31 @@ export function dijkstra(
    gridWidth: number,
    gridHeight: number,
    startIdx: GridIdx,
-   visit: (fromIdx: GridIdx, toIdx: GridIdx, depth: number, costs: number) => boolean,
+   visit: DijkstraVisitor,
    neighbours: (idx: GridIdx, depth: number, costs: number) => GridIdx[],
    computeCosts: (fromIdx: GridIdx, toIdx: GridIdx) => number,
-   filter: (idx: GridIdx) => boolean,
+   filter?: (idx: GridIdx) => boolean,
 ): void {
 
-   const visited = new Grid<boolean>(gridWidth, gridHeight, false)
-   const priorityQueue = new PriorityQueue<DijkstraQueueItem>()
+   const predecessors = createPredecessorGrid(gridWidth, gridHeight)
+   const priorityQueue = createPriorityQueue()
    priorityQueue.push({ cellIdx: startIdx, depth: 0, costs: 0, predecessorIdx: startIdx }, 0)
-   while (priorityQueue.size !== 0) {
+   while (!priorityQueue.isEmpty()) {
       const { cellIdx, depth, costs, predecessorIdx } = priorityQueue.pop()
-      if (visited.cell(cellIdx) || !filter(cellIdx)) {
+      if (predecessors.predecessor(cellIdx)) {
          continue
       }
-      visited.setCell(cellIdx, true)
-      if (visit(predecessorIdx, cellIdx, depth, costs)) {
+      if (filter && !filter(cellIdx)) {
+         continue
+      }
+      predecessors.predecessor(cellIdx, predecessorIdx)
+      if (visit(predecessorIdx, cellIdx, depth, costs, predecessors)) {
          for (const neighbourIdx of neighbours(cellIdx, depth, costs)) {
-            if ((neighbourIdx.x >=
-                0 &&
-                neighbourIdx.x <
-                gridWidth &&
-                neighbourIdx.y >=
-                0 &&
-                neighbourIdx.y <
-                gridHeight)
-                && !visited.cell(neighbourIdx)) {
+            if (neighbourIdx.x >= 0
+                && neighbourIdx.x < gridWidth
+                && neighbourIdx.y >= 0
+                && neighbourIdx.y < gridHeight
+                && !predecessors.predecessor(neighbourIdx)) {
                const neighbourCosts = costs + computeCosts(cellIdx, neighbourIdx)
                priorityQueue.push({
                   cellIdx: neighbourIdx,
@@ -74,9 +75,38 @@ export function dijkstra(
    }
 }
 
+export type DijkstraVisitor =
+   (fromIdx: GridIdx, toIdx: GridIdx, depth: number, costs: number, predecessors: PredecessorGrid) => boolean
+
 type DijkstraQueueItem = {
    cellIdx: GridIdx,
    depth: number,
    costs: number,
    predecessorIdx: GridIdx,
 }
+
+const createPredecessorGrid =
+   (() => {
+      const memoized =
+         memoize(
+            (width: number, height: number) => new PredecessorGrid(width, height),
+            (width: number, height: number) => width + ";" + height)
+      return (width: number, height: number) => {
+         const grid = memoized(width, height)
+         grid.reset()
+         return grid
+      }
+   })()
+
+const createPriorityQueue =
+   (() => {
+      const memoized =
+         memoize(
+            () => new PriorityQueue<DijkstraQueueItem>(),
+            () => "queue")
+      return () => {
+         const queue = memoized()
+         queue.reset()
+         return queue
+      }
+   })()

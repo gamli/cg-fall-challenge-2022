@@ -1,5 +1,18 @@
-﻿import { EAction } from "./Action"
+﻿import { Action, EAction } from "./Action"
 import { GridIdx } from "./Grid"
+
+export function outputAction(action: Action): string {
+   switch (action.type) {
+      case EAction.Wait:
+         return outputWait()
+      case EAction.Move:
+         return outputMove(action.amount, action.from, action.to)
+      case EAction.Build:
+         return outputBuild(action.pos)
+      case EAction.Spawn:
+         return outputSpawn(action.amount, action.pos)
+   }
+}
 
 export function outputMove(amount: number, from: GridIdx, to: GridIdx) {
    return output(joinSpace(EAction.Move, amount, toStringGridIdx(from), toStringGridIdx(to)))

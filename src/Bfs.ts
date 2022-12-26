@@ -1,4 +1,7 @@
+import { PredecessorGrid } from "./GraphSearch"
 import { Grid, GridIdx } from "./Grid"
+import { Queue } from "./Queue"
+import { memoize } from "./Tools"
 
 export function bfsDist(
    gridWidth: number,
@@ -6,7 +9,7 @@ export function bfsDist(
    startIdx: GridIdx,
    targetIdx: GridIdx,
    neighbours: (idx: GridIdx, depth: number) => GridIdx[],
-   filter: (idx: GridIdx) => boolean,
+   filter?: (idx: GridIdx) => boolean,
 ): number {
 
    let dist = Number.POSITIVE_INFINITY
@@ -32,32 +35,31 @@ export function bfs(
    gridWidth: number,
    gridHeight: number,
    startIdx: GridIdx,
-   visit: (fromIdx: GridIdx, toIdx: GridIdx, depth: number) => boolean,
+   visit: BfsVisitor,
    neighbours: (idx: GridIdx, depth: number) => GridIdx[],
-   filter: (idx: GridIdx) => boolean,
+   filter?: (idx: GridIdx) => boolean,
 ): void {
 
-   const visited = new Grid<boolean>(gridWidth, gridHeight, false)
-   const queue: BfsQueueItem[] = [{ cellIdx: startIdx, depth: 0, predecessorIdx: startIdx }]
-   visited.setCell(startIdx, true)
-   while (queue.length !== 0) {
-      const { cellIdx, depth, predecessorIdx } = queue.shift() as BfsQueueItem
-      if (!filter(cellIdx)) {
+   const predecessors = createPredecessorGrid(gridWidth, gridHeight)
+   const queue = createQueue()
+   queue.enqueue({ cellIdx: startIdx, depth: 0, predecessorIdx: null })
+   while (!queue.isEmpty()) {
+      const { cellIdx, depth, predecessorIdx } = queue.dequeue()
+      if (predecessors.predecessor(cellIdx)) {
          continue
       }
-      if (visit(predecessorIdx, cellIdx, depth)) {
+      if (filter && !filter(cellIdx)) {
+         continue
+      }
+      predecessors.predecessor(cellIdx, predecessorIdx)
+      if (visit(predecessorIdx, cellIdx, depth, predecessors)) {
          for (const neighbourIdx of neighbours(cellIdx, depth)) {
-            if ((neighbourIdx.x >=
-                0 &&
-                neighbourIdx.x <
-                gridWidth &&
-                neighbourIdx.y >=
-                0 &&
-                neighbourIdx.y <
-                gridHeight)
-                && !visited.cell(neighbourIdx)) {
-               visited.setCell(neighbourIdx, true)
-               queue.push({
+            if (neighbourIdx.x >= 0
+                && neighbourIdx.x < gridWidth
+                && neighbourIdx.y >= 0
+                && neighbourIdx.y < gridHeight
+                && !predecessors.predecessor(neighbourIdx)) {
+               queue.enqueue({
                   cellIdx: neighbourIdx,
                   depth: depth + 1,
                   predecessorIdx: cellIdx,
@@ -68,8 +70,36 @@ export function bfs(
    }
 }
 
+export type BfsVisitor = (fromIdx: GridIdx, toIdx: GridIdx, depth: number, predecessors: PredecessorGrid) => boolean
+
 type BfsQueueItem = {
    cellIdx: GridIdx,
    depth: number,
    predecessorIdx: GridIdx,
 }
+
+const createPredecessorGrid =
+   (() => {
+      const memoized =
+         memoize(
+            (width: number, height: number) => new PredecessorGrid(width, height),
+            (width: number, height: number) => width + ";" + height)
+      return (width: number, height: number) => {
+         const grid = memoized(width, height)
+         grid.reset()
+         return grid
+      }
+   })()
+
+const createQueue =
+   (() => {
+      const memoized =
+         memoize(
+            () => new Queue<BfsQueueItem>(),
+            () => "queue")
+      return () => {
+         const queue = memoized()
+         queue.reset()
+         return queue
+      }
+   })()
