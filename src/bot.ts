@@ -1,5 +1,5 @@
 import { readGameState } from "./input"
-import { outputAction } from "./output"
+import { outputAction, outputWait } from "./output"
 import { makeSimpleSearch } from "./SimpleSearch"
 
 const initialInputs = readline().split(" ")
@@ -14,7 +14,7 @@ let turn = 0
 while (true) {
 
    turn++
-   
+
    const gameState = readGameState(gridWidth, gridHeight, turn)
 
    const bestMove = findBestMove(gameState)
@@ -22,6 +22,9 @@ while (true) {
    let output = ""
    for (const myActions of bestMove[0]) {
       output += outputAction(myActions)
+   }
+   if (output === "") {
+      output = outputWait()
    }
    console.log(output)
 }

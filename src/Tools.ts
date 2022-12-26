@@ -2,6 +2,10 @@ export function orderBy<T>(array: T[], selector: (element: T) => number): T[] {
    return [...array].sort((a, b) => selector(a) - selector(b))
 }
 
+export function arrayMax<T>(array: T[], selector: (element: T) => number) {
+   return array.reduce((previousValue, currentValue) => Math.max(previousValue, selector(currentValue)), -Infinity)
+}
+
 export function prefix<T extends object, TPrefix extends string>(o: T, prefix: TPrefix): Prefixed<T, TPrefix> {
    const prefixed = {} as Prefixed<T, TPrefix>
    for (const key in o) {
@@ -29,4 +33,11 @@ export function memoize<TArgs extends unknown[], TReturn>(
       }
       return cache[key]
    }
+}
+
+export function padRight(s: string, minLength: number): string {
+   if (s.length >= minLength) {
+      return s  
+   }
+   return s + " ".repeat(minLength - s.length)
 }

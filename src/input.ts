@@ -9,7 +9,7 @@ export function readGameState(width: number, height: number, turn: number): Game
    return {
       turn,
       player: [0, 1].map(player => ({
-         matter: parseInt(inputs[1]),
+         matter: parseInt(inputs[player]),
          recyclers: board.sum(cell => cell.owner === player && cell.recycler ? 1 : 0),
          bots: board.sum(cell => cell.owner === player ? cell.units : 0),
       })) as [PlayerState, PlayerState],
@@ -45,5 +45,5 @@ function readCell(): Cell {
 
 function parseOwner(input: string): Owner {
    let parsedOwner = parseInt(input) as -1 | 0 | 1
-   return parsedOwner === -1 ? null : parsedOwner
+   return parsedOwner === -1 ? null : 1 - parsedOwner as Owner
 }

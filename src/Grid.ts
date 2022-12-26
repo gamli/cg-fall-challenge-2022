@@ -45,7 +45,7 @@ export class Grid<TCell> {
          this._dataFilter[idx.y][idx.x] = this._filter(value, idx)
       }
    }
-   
+
    setAllCells(value: TCell) {
       for (let i = 0; i < this._data.length; i++) {
          this._data[i].fill(value)
@@ -244,5 +244,9 @@ export module GridIdx {
 
    export function distance(idx0: GridIdx, idx1: GridIdx): number {
       return Math.abs(idx0.x - idx1.x) + Math.abs(idx0.y - idx1.y)
+   }
+
+   export function toString(idx: GridIdx): string {
+      return `<${idx.x},${idx.y}>`
    }
 }

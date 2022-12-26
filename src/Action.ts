@@ -2,6 +2,21 @@
 
 export type Action = MoveAction | BuildAction | SpawnAction | WaitAction
 
+export module Action {
+   export function toString(action: Action): string {
+      switch (action.type) {
+         case EAction.Move:
+            return `MOVE(${action.amount}, ${GridIdx.toString(action.from)} -> ${GridIdx.toString(action.to)})`
+         case EAction.Build:
+            return `BUILD(${GridIdx.toString(action.pos)})`
+         case EAction.Spawn:
+            return `SPAWN(${action.amount}, ${GridIdx.toString(action.pos)})`
+         case EAction.Wait:
+            return "WAIT"
+      }
+   }
+}
+
 export interface MoveAction extends ActionBase {
    type: EAction.Move
    amount: number
@@ -47,7 +62,8 @@ export const waitAction = (): WaitAction => ({
 })
 
 export interface ActionBase {
-   type: EAction
+   type: EAction,
+   toString: () => string,
 }
 
 export enum EAction {

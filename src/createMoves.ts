@@ -9,49 +9,48 @@ export function createMoves(state: GameState): Move[] {
    const firstPlayerMoves = createPlayerMoves(state, 0)
    const secondPlayerMoves = createPlayerMoves(state, 1)
 
-   return firstPlayerMoves.flatMap(
-      firstPlayerMove => secondPlayerMoves.map(
-         secondPlayerMove => [firstPlayerMove, secondPlayerMove]))
+   const moves =
+      firstPlayerMoves.flatMap(
+         firstPlayerMove => secondPlayerMoves.map(
+            secondPlayerMove => [firstPlayerMove, secondPlayerMove])) as Move[]
+
+   // console.error("created moves", moves)
+
+   return moves
 }
 
 function createPlayerMoves(state: GameState, player: Player): PlayerMove[] {
 
+   // console.error("create player moves for player", player)
+
    const playerState = state.player[player]
 
-   const playerMovesWithMatterLeft = [[[], playerState.matter]] as [PlayerMove, number][]
+   const playerMovesAndMatter = [[[], playerState.matter]] as PlayerMoveAndMatter[]
+
+   addRecyclerActions(state, player, playerMovesAndMatter)
+   addSpawnActions(state, player, playerMovesAndMatter)
+   addMoveActionSets(state, player, playerMovesAndMatter)
+
+   const playerMoves = playerMovesAndMatter.map(([playerMove]) => playerMove)
+
+   // console.error("\tdone: created player moves for player", player)
+
+   return playerMoves
+}
+
+function addRecyclerActions(state: GameState, player: Player, playerMovesAndMatter: PlayerMoveAndMatter[]) {
+
+   // console.error("creating recycler actions", playerMovesAndMatter)
 
    const recyclerPositions = potentialRecyclerBuildPositions(state, player)
+   let playerState = state.player[player]
    if (playerState.matter >= BUILD_COSTS) {
       for (const recyclerPosition of recyclerPositions) {
-         playerMovesWithMatterLeft.push([[buildAction(recyclerPosition)], playerState.matter - BUILD_COSTS])
+         playerMovesAndMatter.push([[buildAction(recyclerPosition)], playerState.matter - BUILD_COSTS])
       }
    }
 
-   const spawnPositions = potentialSpawnPositions(state, player)
-   for (let numberOfSpawns = 1; numberOfSpawns <= spawnPositions.length; numberOfSpawns++) {
-
-      const spawnActions =
-         spawnPositions
-         .slice(0, numberOfSpawns)
-         .map(spawnPosition => spawnAction(1, spawnPosition))
-      const totalSpawnCosts = spawnActions.length * SPAWN_COSTS
-
-      for (const playerMove of playerMovesWithMatterLeft) {
-         const matterLeft = playerMove[1]
-         if (matterLeft >= totalSpawnCosts) {
-            playerMovesWithMatterLeft.push([[...playerMove[0], ...spawnActions], matterLeft - totalSpawnCosts])
-         }
-      }
-   }
-
-   const moveActionSets = potentialMoveActionSets(state, player)
-   for (const moveActionSet of moveActionSets) {
-      for (const playerMove of playerMovesWithMatterLeft) {
-         playerMovesWithMatterLeft.push([[...playerMove[0], ...moveActionSet], playerMove[1]])
-      }
-   }
-
-   return playerMovesWithMatterLeft.map(([playerMove]) => playerMove)
+   // console.error("\tdone: created recycler actions", playerMovesAndMatter)
 }
 
 function potentialRecyclerBuildPositions(state: GameState, player: Player): GridIdx[] {
@@ -82,6 +81,37 @@ function potentialRecyclerBuildPositions(state: GameState, player: Player): Grid
    .map(([pos]) => pos)
 }
 
+function addSpawnActions(state: GameState, player: Player, playerMovesAndMatter: PlayerMoveAndMatter[]) {
+
+   // console.error("creating spawn actions", playerMovesAndMatter)
+
+   const spawnPositions = potentialSpawnPositions(state, player)
+   const movesWithSpawnActionsAdded = [] as typeof playerMovesAndMatter
+   const numberOfMovesWithoutSpawnActions = playerMovesAndMatter.length
+   for (let numberOfSpawns = 1; numberOfSpawns <= spawnPositions.length; numberOfSpawns++) {
+
+      const spawnActions =
+         spawnPositions
+         .slice(0, numberOfSpawns)
+         .map(spawnPosition => spawnAction(1, spawnPosition))
+      const totalSpawnCosts = spawnActions.length * SPAWN_COSTS
+
+      for (let i = 0; i < numberOfMovesWithoutSpawnActions; i++) {
+         const moveWithoutSpawnActions = playerMovesAndMatter[i]
+         const matterLeft = moveWithoutSpawnActions[1]
+         if (matterLeft >= totalSpawnCosts) {
+            movesWithSpawnActionsAdded.push([
+               [...moveWithoutSpawnActions[0], ...spawnActions],
+               matterLeft - totalSpawnCosts,
+            ])
+         }
+      }
+   }
+   playerMovesAndMatter.push(...movesWithSpawnActionsAdded)
+
+   // console.error("\tdone: created spawn actions", playerMovesAndMatter)
+}
+
 function potentialSpawnPositions(state: GameState, player: Player): GridIdx[] {
 
    const positionsWithScores = [] as [GridIdx, number][]
@@ -105,6 +135,22 @@ function potentialSpawnPositions(state: GameState, player: Player): GridIdx[] {
    return orderBy(positionsWithScores, positionWithScore => -positionWithScore[1])
    .slice(0, 3)
    .map(([pos]) => pos)
+}
+
+function addMoveActionSets(state: GameState, player: Player, playerMovesAndMatter: PlayerMoveAndMatter[]) {
+
+   // console.error("creating move action sets", playerMovesAndMatter)
+
+   const moveActionSets = potentialMoveActionSets(state, player)
+   const numberOfMovesWithoutMoveActions = playerMovesAndMatter.length
+   for (const moveActionSet of moveActionSets) {
+      for (let i = 0; i < numberOfMovesWithoutMoveActions; i++) {
+         const playerMove = playerMovesAndMatter[i]
+         playerMovesAndMatter.push([[...playerMove[0], ...moveActionSet], playerMove[1]])
+      }
+   }
+
+   // console.error("\tdone: created move action sets", playerMovesAndMatter)
 }
 
 function potentialMoveActionSets(state: GameState, player: Player): MoveAction[][] {
@@ -152,6 +198,9 @@ function potentialMoveActionSets(state: GameState, player: Player): MoveAction[]
 
    return moveActionSets
 }
+
+
+type PlayerMoveAndMatter = [PlayerMove, number]
 
 // function canCaptureCell(fromCell: Cell, toCell: Cell) {
 //    return toCell.owner !== fromCell.owner && !toCell.recycler && toCell.units < fromCell.units

@@ -1,4 +1,5 @@
 ﻿import { Action, BuildAction, EAction, InferAction, MoveAction, SpawnAction, WaitAction } from "./Action"
+import { ColumnBuilder } from "./ColumnBuilder"
 import { Player } from "./GameState"
 
 export type Move = readonly [PlayerMove, PlayerMove]
@@ -37,5 +38,15 @@ export module Move {
             }
          }
       }
+   }
+
+   export function toString(move: Move): string {
+      const columnBuilder = new ColumnBuilder("   |   ", 2)
+      let printAction = (player: Player, action: Action) => columnBuilder.push(Action.toString(action), player)
+      iterateBuildActions(move, printAction)
+      iterateMoveActions(move, printAction)
+      iterateSpawnActions(move, printAction)
+      iterateWaitActions(move, printAction)
+      return columnBuilder.toString()
    }
 }
