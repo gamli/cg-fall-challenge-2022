@@ -15,6 +15,26 @@ export module Action {
             return "WAIT"
       }
    }
+
+   export function parse(actionString: string) {
+      const parts = actionString.split(" ")
+      switch (parts[0] as EAction) {
+         case EAction.Move:
+            return moveAction(
+               parseInt(parts[1]),
+               GridIdx.create(parseInt(parts[2]), parseInt(parts[3])),
+               GridIdx.create(parseInt(parts[4]), parseInt(parts[5])))
+         case EAction.Build:
+            return buildAction(
+               GridIdx.create(parseInt(parts[1]), parseInt(parts[2])))
+         case EAction.Spawn:
+            return spawnAction(
+               parseInt(parts[1]),
+               GridIdx.create(parseInt(parts[2]), parseInt(parts[3])))
+         case EAction.Wait:
+            return waitAction()
+      }
+   }
 }
 
 export interface MoveAction extends ActionBase {

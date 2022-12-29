@@ -1,23 +1,28 @@
 const path = require("path")
 
 module.exports = {
-  mode: "production",
-  entry: "./src/bot.ts",
-  devtool: "inline-source-map",
-  module: {
-    rules: [
-      {
-        test: /\.tsx?$/,
-        use: "ts-loader",
-        exclude: /node_modules/,
-      },
-    ],
-  },
-  resolve: {
-    extensions: [".tsx", ".ts", ".js"],
-  },
-  output: {
-    filename: "bot.js",
-    path: path.resolve(__dirname, "dist"),
-  },
+    externalsPresets: {node: true},
+    mode: "production",
+    entry: {
+        bot: "./src/bot.ts",
+        downloadReplays: "./src/codingame/Replays.ts",
+    },
+    //devtool: "inline-source-map",
+    module: {
+        rules: [
+            {
+                test: /\.tsx?$/,
+                use: "ts-loader",
+                exclude: /node_modules/,
+            },
+        ],
+    },
+    resolve: {
+        extensions: [".tsx", ".ts", ".js"],
+    },
+    output: {
+        publicPath: "",
+        filename: "[name].js",
+        path: path.resolve(__dirname, "dist"),
+    },
 }

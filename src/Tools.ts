@@ -1,5 +1,23 @@
+import * as util from "util"
+
 export function orderBy<T>(array: T[], selector: (element: T) => number): T[] {
    return [...array].sort((a, b) => selector(a) - selector(b))
+}
+
+export function partition<T>(array: T[], size: number): T[][] {
+   if (array.length === 0) {
+      return []
+   }
+   return array.reduce(
+      (partitions, element) => {
+         const lastPartition = partitions[partitions.length - 1]
+         if (lastPartition.length === size) {
+            partitions.push([])
+         }
+         partitions[partitions.length - 1].push(element)
+         return partitions
+      },
+      [[] as T[]])
 }
 
 export function arrayMax<T>(array: T[], selector: (element: T) => number) {
@@ -37,7 +55,20 @@ export function memoize<TArgs extends unknown[], TReturn>(
 
 export function padRight(s: string, minLength: number): string {
    if (s.length >= minLength) {
-      return s  
+      return s
    }
    return s + " ".repeat(minLength - s.length)
+}
+
+export function toStringDeep(value: unknown, options?: { showHidden?: true, depth?: number, colors?: false }) {
+   return util.inspect(
+      value,
+      {
+         showHidden: !!options?.showHidden,
+         depth: options?.depth || Infinity,
+         maxArrayLength: Infinity,
+         maxStringLength: Infinity,
+         breakLength: Infinity,
+         colors: options?.colors !== false,
+      })
 }

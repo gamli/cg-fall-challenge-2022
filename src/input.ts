@@ -1,10 +1,10 @@
 ﻿import { Board, Cell, GameState, Owner, PlayerState } from "./GameState"
 
-export function readGameState(width: number, height: number, turn: number): GameState {
+export function readGameState(width: number, height: number, turn: number, nextLine: () => string): GameState {
 
-   const inputs = readline().split(" ")
+   const inputs = nextLine().split(" ")
 
-   const board = readBoard(width, height)
+   const board = readBoard(width, height, nextLine)
 
    return {
       turn,
@@ -17,29 +17,39 @@ export function readGameState(width: number, height: number, turn: number): Game
    }
 }
 
-function readBoard(width: number, height: number): Board {
+function readBoard(width: number, height: number, nextLine: () => string): Board {
 
    const board = new Board(width, height, null)
 
    for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-         board.setCell({ x, y }, readCell())
+         try {
+            board.setCell({ x, y }, readCell(nextLine))
+         } catch(e) {
+            console.error(e)
+            throw e
+         }
       }
    }
 
    return board
 }
 
-function readCell(): Cell {
-   const [scrap, owner, units, recycler, canBuild, canSpawn, inRangeOfRecycler] = readline().split(" ")
-   return {
-      scrap: parseInt(scrap),
-      owner: parseOwner(owner),
-      units: parseInt(units),
-      recycler: recycler === "1",
-      inRangeOfRecycler: inRangeOfRecycler === "1",
-      canBuild: canBuild === "1",
-      canSpawn: canSpawn === "1",
+function readCell(nextLine: () => string): Cell {
+   try {
+      const [scrap, owner, units, recycler, canBuild, canSpawn, inRangeOfRecycler] = nextLine().split(" ")
+      return {
+         scrap: parseInt(scrap),
+         owner: parseOwner(owner),
+         units: parseInt(units),
+         recycler: recycler === "1",
+         inRangeOfRecycler: inRangeOfRecycler === "1",
+         canBuild: canBuild === "1",
+         canSpawn: canSpawn === "1",
+      }
+   } catch(e) {
+      console.error(e)
+      throw e
    }
 }
 

@@ -1,1 +1,1 @@
-﻿declare function readline(): string
+﻿

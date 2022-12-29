@@ -222,6 +222,10 @@ export interface GridIdx {
 
 export module GridIdx {
 
+   export function create(x: number, y: number): GridIdx {
+      return { x, y }
+   }
+   
    export function equals(idx0: GridIdx, idx1: GridIdx): boolean {
       return idx0.x === idx1.x && idx0.y === idx1.y
    }
