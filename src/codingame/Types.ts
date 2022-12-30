@@ -1,5 +1,6 @@
 ﻿import Frame = BattleResult.Frame
 import { Action } from "../Action"
+import { readGameState } from "../input"
 import { PlayerMove } from "../Move"
 
 export type Notification = unknown
@@ -68,6 +69,33 @@ export module BattleResult {
          return frame
          .stdout
          .split(";").map(actionString => Action.parse(actionString.trim()))
+      }
+
+      export function extractStateFromFrame(frame: Frame, turnIdx: number, gridWidth: number, gridHeight: number) {
+
+         let lines: string[]
+
+         if (turnIdx === 0) {
+            lines = frame.stderr.split("\n")
+            const wh = lines[0].split(" ").map(s => parseInt(s))
+            gridWidth = wh[0]
+            gridHeight = wh[1]
+            lines.splice(0, 1)
+         } else {
+            lines = frame.stderr.split("\n")
+         }
+
+         let lineIdx = 0
+         const readline = () => {
+            if (lineIdx >= lines.length) {
+               throw new Error("index out of bounds: " + lineIdx + " vs " + lines.length)
+            }
+            const line = lines[lineIdx]
+            lineIdx++
+            return line
+         }
+
+         return readGameState(gridWidth, gridHeight, turnIdx + 1, readline)
       }
    }
 }

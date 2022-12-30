@@ -3,6 +3,7 @@
 export type Action = MoveAction | BuildAction | SpawnAction | WaitAction
 
 export module Action {
+   
    export function toString(action: Action): string {
       switch (action.type) {
          case EAction.Move:

@@ -18,7 +18,7 @@ async function main() {
 
    const myAgentId = myUser.agentId
 
-   const myLastBattles = (await api.gamesPlayersRankingRemoteService.findLastBattlesByAgentId(myAgentId)).slice(0, 1)
+   const myLastBattles = (await api.gamesPlayersRankingRemoteService.findLastBattlesByAgentId(myAgentId))
 
    const myLastBattleResults =
       await Promise.all(myLastBattles.map(({ gameId }) => api.gameResultRemoteService.byGameId(gameId)))

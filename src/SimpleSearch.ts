@@ -13,8 +13,8 @@ export function makeSimpleSearch(gridWidth: number, gridHeight: number) {
 
       const selectedMove = Math.floor(Math.random() * moves.length)
 
-      console.error("found ", moves.length, " moves - selected ", selectedMove + 1)
-      console.error(Move.toString(moves[selectedMove]))
+      // console.error("found ", moves.length, " moves - selected ", selectedMove + 1)
+      // console.error(Move.toString(moves[selectedMove]))
 
       return moves[selectedMove]
    }

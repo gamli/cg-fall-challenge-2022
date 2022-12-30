@@ -1,37 +1,28 @@
 ﻿import { bfs, bfsDist, BfsVisitor } from "./Bfs"
 import { dijkstra, dijkstraDist, DijkstraVisitor } from "./Dijkstra"
+import { deserializeNumber, serializeNumber } from "./Tools"
 
 export class Grid<TCell> {
 
    private readonly _data: TCell[][]
-   private readonly _dataFilter: boolean[][]
 
    constructor(
       public readonly width: number,
       public readonly height: number,
       defaultCell: TCell | ((idx: GridIdx) => TCell),
-      private readonly _filter?: (cell: TCell, cellIdx: GridIdx) => boolean,
    ) {
 
       const createDefaultCell = typeof defaultCell === "function" ? defaultCell : () => defaultCell
 
       this._data = []
-      this._dataFilter = this._filter ? [] : undefined
       for (let y = 0; y < height; y++) {
          const row = []
-         const filterRow: boolean[] = this._filter ? [] : undefined
          for (let x = 0; x < width; x++) {
             let cellIdx = { x, y }
             let cell = (createDefaultCell as ((idx: GridIdx) => TCell))(cellIdx)
             row.push(cell)
-            if (this._filter) {
-               filterRow.push(_filter ? _filter(cell, cellIdx) : true)
-            }
          }
          this._data.push(row)
-         if (this._filter) {
-            this._dataFilter.push(filterRow)
-         }
       }
    }
 
@@ -41,9 +32,6 @@ export class Grid<TCell> {
 
    setCell(idx: GridIdx, value: TCell) {
       this._data[idx.y][idx.x] = value
-      if (this._filter) {
-         this._dataFilter[idx.y][idx.x] = this._filter(value, idx)
-      }
    }
 
    setAllCells(value: TCell) {
@@ -60,14 +48,6 @@ export class Grid<TCell> {
       const flattened = [] as { cell: TCell, cellIdx: GridIdx }[]
       this.iterate((cell, cellIdx) => flattened.push({ cell, cellIdx }))
       return flattened
-   }
-
-   filter(f: (cell: TCell, cellIdx: GridIdx) => boolean): Grid<TCell> {
-      return new Grid(
-         this.width,
-         this.height,
-         idx => this.cell(idx),
-         (cell, cellIdx) => (!this._dataFilter || this._dataFilter[cellIdx.y][cellIdx.x]) && f(cell, cellIdx))
    }
 
    map<TSelectedCell>(selector: (cell: TCell, gridIdx: GridIdx) => TSelectedCell): Grid<TSelectedCell> {
@@ -108,9 +88,7 @@ export class Grid<TCell> {
          for (let x = 0; x < this.width; x++) {
             const cellIdx = { x, y }
             const cell = this.cell(cellIdx)
-            if (!this._dataFilter || this._dataFilter[y][x]) {
-               handleCell(cell, cellIdx)
-            }
+            handleCell(cell, cellIdx)
          }
       }
    }
@@ -149,7 +127,7 @@ export class Grid<TCell> {
       for (const [neighbour, p] of
          GridIdx.neighbours(gridIdx, includeCenter)
                 .map(gridIdx => [this.cell(gridIdx), gridIdx] as const)
-                .filter(([cell, { x, y }]) => !!cell && (!this._dataFilter || this._dataFilter[y][x]))) {
+                .filter(([cell, { x, y }]) => !!cell)) {
          handleNeighbour(neighbour, p)
       }
    }
@@ -213,6 +191,32 @@ export class Grid<TCell> {
          computeCosts,
          cellIdx => filter(this.cell(cellIdx), cellIdx))
    }
+
+   serialize(serializeCell: (cell: TCell) => string): string {
+      let serialized = serializeNumber(this.width) + serializeNumber(this.height)
+      this.iterate(cell => serialized += serializeCell(cell))
+      return serialized
+   }
+
+   static deserialize<T extends Grid<TC>, TC>(
+      s: string,
+      pos: [number],
+      init: (width: number, height: number) => T,
+      deserializeCell: (s: string, pos: [number]) => TC,
+   ): T {
+      
+      const width = deserializeNumber(s, pos)
+      const height = deserializeNumber(s, pos)
+
+      const grid = init(width, height)
+
+      grid.iterate((_, cellIdx) => {
+         const cell = deserializeCell(s, pos)
+         grid.setCell(cellIdx, cell)
+      })
+      
+      return grid
+   }
 }
 
 export interface GridIdx {
@@ -225,7 +229,7 @@ export module GridIdx {
    export function create(x: number, y: number): GridIdx {
       return { x, y }
    }
-   
+
    export function equals(idx0: GridIdx, idx1: GridIdx): boolean {
       return idx0.x === idx1.x && idx0.y === idx1.y
    }

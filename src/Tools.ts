@@ -72,3 +72,30 @@ export function toStringDeep(value: unknown, options?: { showHidden?: true, dept
          colors: options?.colors !== false,
       })
 }
+
+export function serializeNumber(n: number): string {
+   return n.toString() + ";"
+}
+
+export function deserializeNumber(s: string, pos: [number]): number {
+   const semicolonIdx = s.indexOf(";", pos[0])
+   if (semicolonIdx === -1) {
+      throw new Error("no serialized number found (no semicolon found)")
+   }
+   const n = parseInt(s.substring(pos[0], semicolonIdx))
+   if (Number.isNaN(n)) {
+      throw new Error(`The string "${s.substring(Math.max(0, pos[0]), semicolonIdx + 1)}" is not a number`)
+   }
+   pos[0] = semicolonIdx + 1
+   return n
+}
+
+export function serializeBoolean(b: boolean): string {
+   return b ? "1" : "0"
+}
+
+export function deserializeBoolean(s: string, pos: [number]): boolean {   
+   const b = s[pos[0]] === "1"
+   pos[0] = pos[0] + 1
+   return b
+}
