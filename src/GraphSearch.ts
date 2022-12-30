@@ -20,9 +20,11 @@ export class PredecessorGrid {
       }
    }
 
-   createPath(targetIdx: GridIdx) {
+   createPath(targetIdx: GridIdx): GridIdx[] {
       const path = [] as GridIdx[]
-      this.iteratePath(targetIdx, idx => path.push(idx))
+      this.iteratePath(targetIdx, idx => {
+         path.push(idx)
+      })
       return path
    }
 
@@ -40,20 +42,19 @@ export class PredecessorGrid {
       }
    }
 
-   private iteratePathRecursive(
-      idx: GridIdx,
-      handleCell: (idx: GridIdx, type: EPathCellType) => void,
-   ) {
+   private iteratePathRecursive(idx: GridIdx, handleCell: PathCellHandler): undefined | boolean {
 
-      if (!this.predecessor(idx)) {
+      let predecessorIdx = this.predecessor(idx)
+
+      if (!predecessorIdx) {
          throw new Error("target has no predecessor")
       }
 
-      if (this.predecessor(idx) === idx) {
-         handleCell(idx, EPathCellType.PathCellStart)
+      if (predecessorIdx === idx) {
+         return cellHandlerResultToBoolean(handleCell(idx, EPathCellType.PathCellStart))
       } else {
-         this.iteratePathRecursive(this.predecessor(idx), handleCell)
-         handleCell(idx, EPathCellType.PathCellIntermediate)
+         return cellHandlerResultToBoolean(this.iteratePathRecursive(predecessorIdx, handleCell))
+                && cellHandlerResultToBoolean(handleCell(idx, EPathCellType.PathCellIntermediate))
       }
    }
 
@@ -62,7 +63,11 @@ export class PredecessorGrid {
    }
 }
 
-export type PathCellHandler = (idx: GridIdx, type: EPathCellType) => void
+export type PathCellHandler = (idx: GridIdx, type: EPathCellType) => void | boolean
+
+function cellHandlerResultToBoolean(result: void | boolean): boolean {
+   return result === undefined ? true : result as boolean
+}
 
 export enum EPathCellType {
    PathCellStart = 0,

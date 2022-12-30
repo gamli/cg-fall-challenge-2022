@@ -4,7 +4,7 @@ import { deserializeNumber, serializeNumber } from "./Tools"
 
 export class Grid<TCell> {
 
-   private readonly _data: TCell[][]
+   private readonly _data: TCell[]
 
    constructor(
       public readonly width: number,
@@ -12,42 +12,29 @@ export class Grid<TCell> {
       defaultCell: TCell | ((idx: GridIdx) => TCell),
    ) {
 
-      const createDefaultCell = typeof defaultCell === "function" ? defaultCell : () => defaultCell
+      const createDefaultCell =
+         typeof defaultCell === "function"
+         ? defaultCell as ((idx: GridIdx) => TCell)
+         : () => defaultCell
 
-      this._data = []
-      for (let y = 0; y < height; y++) {
-         const row = []
-         for (let x = 0; x < width; x++) {
-            let cellIdx = { x, y }
-            let cell = (createDefaultCell as ((idx: GridIdx) => TCell))(cellIdx)
-            row.push(cell)
-         }
-         this._data.push(row)
-      }
+      this._data = new Array(width * height)
+      this.iterateIdx(idx => this.setCell(idx, createDefaultCell(idx)))
    }
 
    cell({ x, y }: GridIdx) {
-      return this._data[y]?.[x]
+      return this._data[y * this.width + x]
    }
 
-   setCell(idx: GridIdx, value: TCell) {
-      this._data[idx.y][idx.x] = value
+   setCell({ x, y }: GridIdx, value: TCell) {
+      this._data[y * this.width + x] = value
    }
 
    setAllCells(value: TCell) {
-      for (let i = 0; i < this._data.length; i++) {
-         this._data[i].fill(value)
-      }
+      this._data.fill(value)
    }
 
    checkBounds(idx: GridIdx) {
       return idx.x >= 0 && idx.x < this.width && idx.y >= 0 && idx.y < this.height
-   }
-
-   flatten() {
-      const flattened = [] as { cell: TCell, cellIdx: GridIdx }[]
-      this.iterate((cell, cellIdx) => flattened.push({ cell, cellIdx }))
-      return flattened
    }
 
    map<TSelectedCell>(selector: (cell: TCell, gridIdx: GridIdx) => TSelectedCell): Grid<TSelectedCell> {
@@ -83,12 +70,14 @@ export class Grid<TCell> {
       return acc
    }
 
-   iterate(handleCell: (cell: TCell, gridIdx: GridIdx) => void) {
+   iterate(handleCell: (cell: TCell, idx: GridIdx) => void) {
+      this.iterateIdx(idx => handleCell(this.cell(idx), idx))
+   }
+
+   iterateIdx(handleIdx: (idx: GridIdx) => void) {
       for (let y = 0; y < this.height; y++) {
          for (let x = 0; x < this.width; x++) {
-            const cellIdx = { x, y }
-            const cell = this.cell(cellIdx)
-            handleCell(cell, cellIdx)
+            handleIdx({ x, y })
          }
       }
    }
@@ -204,7 +193,7 @@ export class Grid<TCell> {
       init: (width: number, height: number) => T,
       deserializeCell: (s: string, pos: [number]) => TC,
    ): T {
-      
+
       const width = deserializeNumber(s, pos)
       const height = deserializeNumber(s, pos)
 
@@ -214,7 +203,7 @@ export class Grid<TCell> {
          const cell = deserializeCell(s, pos)
          grid.setCell(cellIdx, cell)
       })
-      
+
       return grid
    }
 }

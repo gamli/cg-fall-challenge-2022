@@ -22,9 +22,7 @@ while (true) {
 
    const gameState = readGameState(gridWidth, gridHeight, turn, readline)
 
-   const serializedGameState = GameState.serialize(gameState)
-   const compressedSerializedGameState = deflateSync(serializedGameState).toString("base64")
-   console.error(compressedSerializedGameState)
+   console.error(GameState.serializeCompressed(gameState))
 
    const bestMove = findBestMove(gameState)
 

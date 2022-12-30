@@ -1,5 +1,6 @@
 ﻿import { Grid, GridIdx } from "./Grid"
 import { deserializeBoolean, deserializeNumber, serializeBoolean, serializeNumber } from "./Tools"
+import { deflateSync, inflateSync } from "node:zlib"
 
 
 export interface GameState {
@@ -16,6 +17,13 @@ export module GameState {
          player: [{ ...state.player[0] }, { ...state.player[1] }],
          board: state.board.clone(),
       }
+   }
+
+   export function serializeCompressed(state: GameState): string {
+      return deflateSync(GameState.serialize(state)).toString("base64")
+   }
+   export function deserializeCompressed(sCompressed: string): GameState {
+      return GameState.deserialize(inflateSync(Buffer.from(sCompressed, "base64")).toString(), [0])
    }
 
    export function serialize(state: GameState): string {

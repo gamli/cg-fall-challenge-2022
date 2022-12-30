@@ -29,7 +29,7 @@ describe("simulation", () => {
       const statesAndMoves =
          framePairs.map((p0p1Frame, turnIdx) => {
 
-            const state = BattleResult.Frame.extractStateFromFrame(p0p1Frame[myIndex], turnIdx, gridWidth, gridHeight)
+            const state = GameState.deserializeCompressed(p0p1Frame[myIndex].stderr)
             const move = p0p1Frame.map(frame => BattleResult.Frame.playerMove(frame)) as [PlayerMove, PlayerMove]
 
             return {
