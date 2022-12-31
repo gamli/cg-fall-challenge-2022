@@ -22,6 +22,7 @@ export module GameState {
    export function serializeCompressed(state: GameState): string {
       return deflateSync(GameState.serialize(state)).toString("base64")
    }
+
    export function deserializeCompressed(sCompressed: string): GameState {
       return GameState.deserialize(inflateSync(Buffer.from(sCompressed, "base64")).toString(), [0])
    }
@@ -44,7 +45,9 @@ export module GameState {
 
 export type Owner = Player | null
 
-export type Player = 0 | 1
+export type Player = typeof MY_PLAYER | typeof OPP_PLAYER
+export const MY_PLAYER = 0
+export const OPP_PLAYER = 1
 
 export module Player {
    export function opponent(player: Player): Player {
@@ -78,7 +81,7 @@ export module PlayerState {
 export class Board extends Grid<Cell> {
 
    clone(): Board {
-      return new Board(this.width, this.height, idx => this.cell(idx))
+      return new Board(this.width, this.height, idx => ({ ...this.cell(idx) }))
    }
 
    iterateRecyclers(handleRecycler: (idx: GridIdx) => void) {
@@ -116,6 +119,16 @@ export module Cell {
 
    export function isPath(cell: Cell): boolean {
       return !cell.recycler && cell.scrap > 0
+   }
+
+   export function equals(c0: Cell, c1: Cell): boolean {
+      return c0?.scrap === c1?.scrap
+             && c0?.owner === c1?.owner
+             && c0?.units === c1?.units
+             && c0?.recycler === c1?.recycler
+             && c0?.inRangeOfRecycler === c1?.inRangeOfRecycler
+             && c0?.canBuild === c1?.canBuild
+             && c0?.canSpawn === c1?.canSpawn
    }
 
    export function serialize(cell: Cell): string {

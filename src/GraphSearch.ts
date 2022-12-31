@@ -37,12 +37,13 @@ export class PredecessorGrid {
       if (this.predecessor(targetIdx) === targetIdx) {
          handleCell(targetIdx, EPathCellType.All)
       } else {
-         this.iteratePathRecursive(this.predecessor(targetIdx), handleCell)
-         handleCell(targetIdx, EPathCellType.PathCellEnd)
+         if (this.iteratePathRecursive(this.predecessor(targetIdx), handleCell)) {
+            handleCell(targetIdx, EPathCellType.PathCellEnd)
+         }
       }
    }
 
-   private iteratePathRecursive(idx: GridIdx, handleCell: PathCellHandler): undefined | boolean {
+   private iteratePathRecursive(idx: GridIdx, handleCell: PathCellHandler): boolean {
 
       let predecessorIdx = this.predecessor(idx)
 
@@ -53,8 +54,11 @@ export class PredecessorGrid {
       if (predecessorIdx === idx) {
          return cellHandlerResultToBoolean(handleCell(idx, EPathCellType.PathCellStart))
       } else {
-         return cellHandlerResultToBoolean(this.iteratePathRecursive(predecessorIdx, handleCell))
-                && cellHandlerResultToBoolean(handleCell(idx, EPathCellType.PathCellIntermediate))
+         const recursiveResult = cellHandlerResultToBoolean(this.iteratePathRecursive(predecessorIdx, handleCell))
+         if (recursiveResult) {
+            return cellHandlerResultToBoolean(handleCell(idx, EPathCellType.PathCellIntermediate))
+         }
+         return false
       }
    }
 

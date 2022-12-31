@@ -1,5 +1,6 @@
-﻿import { Action, BUILD_COSTS, BuildAction, EAction, MoveAction, SPAWN_COSTS, SpawnAction } from "./Action"
-import { GameState, Player } from "./GameState"
+﻿import { Action, BUILD_COSTS, BuildAction, MoveAction, SPAWN_COSTS, SpawnAction } from "./Action"
+import { Cell, GameState, MY_PLAYER, Player } from "./GameState"
+import { EPathCellType } from "./GraphSearch"
 import { Grid, GridIdx } from "./Grid"
 import { Move } from "./Move"
 import iterateBuildActions = Move.iterateBuildActions
@@ -28,51 +29,143 @@ export function makeSimulator(width: number, height: number) {
 
       iterateBuildActions(move, (player, action) => {
 
-         assertBuildActionInvariants(player, action, state)
+         const errors = validateBuildAction(player, action, state)
+         if (errors.length) {
+            if (player === MY_PLAYER) {
+               throw new Error(errors.join("\n"))
+            }
+            return
+         }
 
-         state.player[player].matter -= BUILD_COSTS
-         state.board.cell(action.pos).recycler = true
+         let playerState = state.player[player]
+         playerState.matter -= BUILD_COSTS
+         playerState.recyclers++
+         const cell = state.board.cell(action.pos)
+         cell.recycler = true
+         cell.canBuild = false
+         cell.canSpawn = false
+         state.board.iterateNeighbours(
+            action.pos,
+            neighbour => {
+               neighbour.inRangeOfRecycler = true
+            },
+            true)
       })
    }
 
-   function assertBuildActionInvariants(player: Player, action: BuildAction, state: GameState) {
+   function validateBuildAction(player: Player, action: BuildAction, state: GameState): string[] {
+
+      const errMsgs = [] as string[]
 
       if (state.player[player].matter < BUILD_COSTS) {
-         actionException("not enough mana", player, action, state)
+         errMsgs.push(actionErrMsg("not enough mana", player, action, state))
       }
 
       if (!state.board.checkBounds(action.pos)) {
-         actionException(
+         errMsgs.push(actionErrMsg(
             `cell is out of bounds: ${JSON.stringify(action.pos)} - width=${state.board.width};height=${state.board.height}`,
             player,
             action,
-            state)
+            state))
       }
 
       const cell = state.board.cell(action.pos)
 
       if (cell.owner !== player) {
-         actionException(`cell is not owned by player - owner: ${cell.owner}`, player, action, state)
+         errMsgs.push(actionErrMsg(`cell is not owned by player - owner: ${cell.owner}`, player, action, state))
       }
 
       if (cell.recycler) {
-         actionException("there is already a recycler at position", player, action, state)
+         errMsgs.push(actionErrMsg("there is already a recycler at position", player, action, state))
       }
 
       if (cell.units > 0) {
-         actionException("there are units at position", player, action, state)
+         errMsgs.push(actionErrMsg("there are units at position", player, action, state))
       }
+
+      return errMsgs
    }
 
    function simulateMoveAndSpawnActions(move: Move, state: GameState) {
 
+      const gridIdxCenter = { x: state.board.width / 2, y: state.board.height / 2 }
+
       iterateMoveActions(move, (player, action) => {
 
-         assertMoveActionInvariants(player, action, state)
+         const errors = assertMoveActionInvariants(player, action, state)
+         if (errors.length) {
+            if (player === MY_PLAYER) {
+               throw new Error(errors.join("\n"))
+            }
+            return
+         }
 
-         state.board.cell(action.from).units -= action.amount
+         const moveFrom = action.from
+         let moveTo = action.to
+         if (!GridIdx.isNeighbour(moveFrom, moveTo)) {
 
-         const toCell = state.board.cell(action.to)
+            let found = false
+
+            let nearestToIdx = moveFrom
+            let nearestToIdxManhattanDist = Infinity
+            let nearestToCenterIdxEuclideanDist = Infinity
+
+            state.board.bfs(
+               moveFrom,
+               (fromIdx, toIdx, _, predecessors) => {
+                  if (GridIdx.equals(toIdx, moveTo)) {
+                     predecessors.iteratePath(moveTo, (idx, type) => {
+                        if (type === EPathCellType.PathCellIntermediate || type === EPathCellType.All) {
+                           moveTo = idx
+                           found = true
+                           return false
+                        }
+                     })
+                     return false
+                  }
+
+                  const toManhattanDist = GridIdx.manhattanDistance(toIdx, action.to)
+                  const toCenterEuclideanDist = GridIdx.euclideanDistanceSquare(toIdx, gridIdxCenter)
+                  if (toManhattanDist < nearestToIdxManhattanDist ||
+                      (toManhattanDist === nearestToIdxManhattanDist &&
+                       toCenterEuclideanDist < nearestToCenterIdxEuclideanDist)
+                  ) {
+                     nearestToIdx = toIdx
+                     nearestToIdxManhattanDist = toManhattanDist
+                     nearestToCenterIdxEuclideanDist = toCenterEuclideanDist
+                  }
+
+                  return true
+               },
+               Cell.isPath)
+
+            if (!found) {
+               state.board.bfs(
+                  moveFrom,
+                  (fromIdx, toIdx, _, predecessors) => {
+                     if (GridIdx.equals(toIdx, nearestToIdx)) {
+                        predecessors.iteratePath(nearestToIdx, (idx, type) => {
+                           if (type === EPathCellType.PathCellIntermediate || type === EPathCellType.All) {
+                              moveTo = idx
+                              found = true
+                              return false
+                           }
+                        })
+                        return false
+                     }
+                     return true
+                  },
+                  Cell.isPath)
+            }
+
+            if (!found) {
+               throw new Error("no path found")
+            }
+         }
+
+         state.board.cell(moveFrom).units -= action.amount
+
+         const toCell = state.board.cell(moveTo)
 
          if (toCell.recycler) {
             return
@@ -98,7 +191,13 @@ export function makeSimulator(width: number, height: number) {
 
       iterateSpawnActions(move, (player, action) => {
 
-         assertSpawnActionInvariants(player, action, state)
+         const errors = assertSpawnActionInvariants(player, action, state)
+         if (errors.length) {
+            if (player === MY_PLAYER) {
+               throw new Error(errors.join("\n"))
+            }
+            return
+         }
 
          const pos = state.board.cell(action.pos)
 
@@ -123,82 +222,83 @@ export function makeSimulator(width: number, height: number) {
                }
          }
       })
-
-
    }
 
-   function assertMoveActionInvariants(player: Player, action: MoveAction, state: GameState) {
+   function assertMoveActionInvariants(player: Player, action: MoveAction, state: GameState): string[] {
+
+      const errMsgs = [] as string[]
 
       const jsonFrom = JSON.stringify(action.from)
       const jsonTo = JSON.stringify(action.to)
 
       if (!state.board.checkBounds(action.from)) {
-         actionException(
+         errMsgs.push(actionErrMsg(
             `source cell is out of bounds: ${jsonFrom} - width=${state.board.width};height=${state.board.height}`,
             player,
             action,
-            state)
+            state))
       }
 
       if (!state.board.checkBounds(action.to)) {
-         actionException(
+         errMsgs.push(actionErrMsg(
             `target cell is out of bounds: ${jsonTo} - width=${state.board.width};height=${state.board.height}`,
             player,
             action,
-            state)
+            state))
+      }
+
+      if (GridIdx.equals(action.from, action.to)) {
+         errMsgs.push(actionErrMsg(
+            `cannot move from/to same cell: ${GridIdx.toString(action.from)}`,
+            player,
+            action,
+            state))
       }
 
       const fromCell = state.board.cell(action.from)
-      const toCell = state.board.cell(action.to)
 
       if (fromCell.owner !== player) {
-         actionException(`cell is not owned by player - owner: ${fromCell.owner}`, player, action, state)
+         errMsgs.push(actionErrMsg(`cell is not owned by player - owner: ${fromCell.owner}`, player, action, state))
       }
 
       if (fromCell.units < action.amount) {
-         actionException(
+         errMsgs.push(actionErrMsg(
             `cell does not contain enough units: ${fromCell.units} < ${action.amount}`,
             player,
             action,
-            state)
+            state))
       }
 
-      if (!GridIdx.isNeighbour(action.from, action.to)) {
-         actionException(
-            `can only move to direct neighbour cells: ${jsonFrom} - ${jsonTo}`,
-            player,
-            action,
-            state)
-      }
-
-      if (toCell.scrap === 0) {
-         actionException("cannot move onto grass tile", player, action, state)
-      }
+      return errMsgs
    }
 
-   function assertSpawnActionInvariants(player: Player, action: SpawnAction, state: GameState) {
+   function assertSpawnActionInvariants(player: Player, action: SpawnAction, state: GameState): string[] {
+
+      const errMsgs = [] as string[]
 
       if (state.player[player].matter < SPAWN_COSTS) {
-         actionException("not enough mana", player, action, state)
+         errMsgs.push(actionErrMsg("not enough mana", player, action, state))
       }
 
       if (!state.board.checkBounds(action.pos)) {
-         actionException(
+         errMsgs.push(actionErrMsg(
             `cell is out of bounds: ${JSON.stringify(action.pos)} - width=${state.board.width};height=${state.board.height}`,
             player,
             action,
-            state)
+            state))
       }
 
       const cell = state.board.cell(action.pos)
 
       if (cell.owner !== player) {
-         actionException(`cell is not owned by player - owner: ${cell.owner}`, player, action, state)
+         errMsgs.push(actionErrMsg(`cell is not owned by player - owner: ${cell.owner}`, player, action, state))
       }
 
       if (cell.scrap === 0) {
-         actionException("cannot spawn on grass tiles", player, action, state)
+         errMsgs.push(actionErrMsg("cannot spawn on grass tiles", player, action, state))
       }
+
+      return errMsgs
    }
 
    const recyclerMarkers = new Grid<[number, number]>(width, height, () => [0, 0])
@@ -208,6 +308,7 @@ export function makeSimulator(width: number, height: number) {
       const turn = state.turn
 
       state.board.iterateRecyclers(recyclerIdx => {
+
          const recyclerOwner = state.board.cell(recyclerIdx).owner
          state.board.iterateNeighbours(
             recyclerIdx,
@@ -230,9 +331,15 @@ export function makeSimulator(width: number, height: number) {
    }
 
    function simulateDeadlyGrass(state: GameState) {
-      state.board.iterate(cell => {
+      state.board.iterate((cell, idx) => {
          if (cell.scrap === 0) {
-            cell.recycler = false
+            cell.owner = null
+            if (cell.recycler) {
+               state.board.iterateNeighbours(
+                  idx,
+                  neighbour => neighbour.recycler = false,
+                  true)
+            }
             cell.units = 0
          }
       })
@@ -241,9 +348,9 @@ export function makeSimulator(width: number, height: number) {
    return simulateMove
 }
 
-function actionException(message: string, player: Player, action: Action, state: GameState) {
+function actionErrMsg(message: string, player: Player, action: Action, state: GameState): string {
    const preamble = `Action Type: ${action.type} - Player: ${player}`
    const jsonAction = JSON.stringify(action)
    const jsonState = JSON.stringify(state)
-   throw new Error([preamble, message, jsonAction, jsonState].join("\n"))
+   return [preamble, message, jsonAction, jsonState].join("\n")
 }

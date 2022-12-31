@@ -67,7 +67,10 @@ export module BattleResult {
       export function playerMove(frame: Frame): PlayerMove {
          return frame
          .stdout
-         .split(";").map(actionString => Action.parse(actionString.trim()))
+         .split(";")
+         .map(s => s.trim())
+         .filter(s => s.length !== 0)
+         .map(actionString => Action.parse(actionString.trim()))
       }
    }
 }

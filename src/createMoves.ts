@@ -14,14 +14,10 @@ export function createMoves(state: GameState): Move[] {
          firstPlayerMove => secondPlayerMoves.map(
             secondPlayerMove => [firstPlayerMove, secondPlayerMove])) as Move[]
 
-   // console.error("created moves", moves)
-
    return moves
 }
 
 function createPlayerMoves(state: GameState, player: Player): PlayerMove[] {
-
-   // console.error("create player moves for player", player)
 
    const playerState = state.player[player]
 
@@ -32,8 +28,6 @@ function createPlayerMoves(state: GameState, player: Player): PlayerMove[] {
    addMoveActionSets(state, player, playerMovesAndMatter)
 
    const playerMoves = playerMovesAndMatter.map(([playerMove]) => playerMove)
-
-   // console.error("\tdone: created player moves for player", player)
 
    return playerMoves
 }

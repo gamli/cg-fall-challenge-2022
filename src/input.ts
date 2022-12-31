@@ -1,4 +1,4 @@
-﻿import { Board, Cell, GameState, Owner, PlayerState } from "./GameState"
+﻿import { Board, Cell, GameState, MY_PLAYER, OPP_PLAYER, Owner, PlayerState } from "./GameState"
 
 export function readGameState(width: number, height: number, turn: number, nextLine: () => string): GameState {
 
@@ -20,17 +20,8 @@ export function readGameState(width: number, height: number, turn: number, nextL
 function readBoard(width: number, height: number, nextLine: () => string): Board {
 
    const board = new Board(width, height, null)
-
-   for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-         try {
-            board.setCell({ x, y }, readCell(nextLine))
-         } catch(e) {
-            console.error(e)
-            throw e
-         }
-      }
-   }
+   
+   board.iterate((_, idx) => board.setCell(idx, readCell(nextLine)))
 
    return board
 }
@@ -47,7 +38,7 @@ function readCell(nextLine: () => string): Cell {
          canBuild: canBuild === "1",
          canSpawn: canSpawn === "1",
       }
-   } catch(e) {
+   } catch (e) {
       console.error(e)
       throw e
    }
@@ -55,5 +46,9 @@ function readCell(nextLine: () => string): Cell {
 
 function parseOwner(input: string): Owner {
    let parsedOwner = parseInt(input) as -1 | 0 | 1
-   return parsedOwner === -1 ? null : 1 - parsedOwner as Owner
+   return parsedOwner === -1
+          ? null
+          : parsedOwner === 1
+            ? MY_PLAYER
+            : OPP_PLAYER
 }

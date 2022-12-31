@@ -31,7 +31,7 @@ export class Queue<TQueueItem> {
    }
 
    isEmpty(): boolean {
-      return this._dataOutIdx >= 0 || this._dataInIdx >= 0
+      return this._dataOutIdx < 0 && this._dataInIdx < 0
    }
 
    reset(): void {

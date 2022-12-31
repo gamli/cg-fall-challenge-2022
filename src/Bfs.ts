@@ -42,7 +42,7 @@ export function bfs(
 
    const predecessors = createPredecessorGrid(gridWidth, gridHeight)
    const queue = createQueue()
-   queue.enqueue({ cellIdx: startIdx, depth: 0, predecessorIdx: null })
+   queue.enqueue({ cellIdx: startIdx, depth: 0, predecessorIdx: startIdx })
    while (!queue.isEmpty()) {
       const { cellIdx, depth, predecessorIdx } = queue.dequeue()
       if (predecessors.predecessor(cellIdx)) {

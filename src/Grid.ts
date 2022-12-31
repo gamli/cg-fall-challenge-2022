@@ -116,7 +116,7 @@ export class Grid<TCell> {
       for (const [neighbour, p] of
          GridIdx.neighbours(gridIdx, includeCenter)
                 .map(gridIdx => [this.cell(gridIdx), gridIdx] as const)
-                .filter(([cell, { x, y }]) => !!cell)) {
+                .filter(([_, idx]) => this.checkBounds(idx))) {
          handleNeighbour(neighbour, p)
       }
    }
@@ -239,8 +239,12 @@ export module GridIdx {
       }
    }
 
-   export function distance(idx0: GridIdx, idx1: GridIdx): number {
+   export function manhattanDistance(idx0: GridIdx, idx1: GridIdx): number {
       return Math.abs(idx0.x - idx1.x) + Math.abs(idx0.y - idx1.y)
+   }
+
+   export function euclideanDistanceSquare(idx0: GridIdx, idx1: GridIdx): number {
+      return Math.pow(idx0.x - idx1.x, 2) + Math.pow(idx0.y - idx1.y, 2)
    }
 
    export function toString(idx: GridIdx): string {

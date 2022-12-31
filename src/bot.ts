@@ -3,8 +3,6 @@ import { readGameState } from "./input"
 import { outputAction, outputWait } from "./output"
 import { makeSimpleSearch } from "./SimpleSearch"
 
-import { deflateSync } from "node:zlib"
-
 declare let readline: () => string
 
 const initialInputs = readline().split(" ")

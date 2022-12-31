@@ -99,3 +99,5 @@ export function deserializeBoolean(s: string, pos: [number]): boolean {
    pos[0] = pos[0] + 1
    return b
 }
+
+export const identityFn = <T>(x: T) => x 
