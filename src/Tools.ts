@@ -21,7 +21,27 @@ export function partition<T>(array: T[], size: number): T[][] {
 }
 
 export function arrayMax<T>(array: T[], selector: (element: T) => number) {
-   return array.reduce((previousValue, currentValue) => Math.max(previousValue, selector(currentValue)), -Infinity)
+   return array.reduce((max, element) => Math.max(max, selector(element)), -Infinity)
+}
+
+export function arrayMaxBy<T>(array: T[], selector: (element: T) => number) {
+   const maxIdx = arrayMaxIdxBy(array, selector)
+   if(maxIdx === undefined) {
+      return undefined
+   }
+   return array[maxIdx]
+}
+
+export function arrayMaxIdxBy<T>(array: T[], selector: (element: T) => number) {
+   return array.reduce(
+      (maxElementAndMax, element, elementIdx) => {
+         const value = selector(element)
+         if (value > maxElementAndMax[1]) {
+            return [elementIdx, value]
+         }
+         return maxElementAndMax
+      },
+      [undefined, -Infinity])[0]
 }
 
 export function prefix<T extends object, TPrefix extends string>(o: T, prefix: TPrefix): Prefixed<T, TPrefix> {
@@ -94,7 +114,7 @@ export function serializeBoolean(b: boolean): string {
    return b ? "1" : "0"
 }
 
-export function deserializeBoolean(s: string, pos: [number]): boolean {   
+export function deserializeBoolean(s: string, pos: [number]): boolean {
    const b = s[pos[0]] === "1"
    pos[0] = pos[0] + 1
    return b

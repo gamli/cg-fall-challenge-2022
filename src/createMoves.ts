@@ -1,5 +1,6 @@
 ﻿import { BUILD_COSTS, buildAction, moveAction, MoveAction, SPAWN_COSTS, spawnAction } from "./Action"
 import { Cell, GameState, Player } from "./GameState"
+import { EPathCellType } from "./GraphSearch"
 import { GridIdx } from "./Grid"
 import { Move, PlayerMove } from "./Move"
 import { orderBy } from "./Tools"
@@ -159,33 +160,40 @@ function potentialMoveActionSets(state: GameState, player: Player): MoveAction[]
          let unitsLeftToMove = cellWithUnits.units
 
          state.board.iterateNeighbours(cellWithUnitsIdx, (neighbour, neighbourIdx) => {
-
-            if (neighbour.owner !== cellWithUnits.owner && !neighbour.recycler && neighbour.units < unitsLeftToMove) {
-
-               moveActionSet.push(moveAction(neighbour.units + 1, cellWithUnitsIdx, neighbourIdx))
-
-               unitsLeftToMove -= neighbour.units
+            if (Cell.isPath(neighbour) // can we even move to the cell
+                && neighbour.owner !== cellWithUnits.owner // do we not own the cell already
+                && neighbour.units < unitsLeftToMove // can we claim the cell
+            ) {
+               // move as many bots as necessary to claim the cell
+               let amount = neighbour.units + 1
+               moveActionSet.push(moveAction(amount, cellWithUnitsIdx, neighbourIdx))
+               unitsLeftToMove -= amount
             }
          })
 
-         while (unitsLeftToMove > 0) {
-
+         if (unitsLeftToMove > 0) {
             state.board.bfs(
                cellWithUnitsIdx,
                (_fromIdx, toIdx, _depth, predecessors) => {
                   const toCell = state.board.cell(toIdx)
-                  if (toCell.owner !== cellWithUnits.owner && !toCell.recycler) {
-                     predecessors.iteratePath(toIdx, pathIdx => {
-                        if (pathIdx !== cellWithUnitsIdx) {
-                           moveActionSet.push(moveAction(unitsLeftToMove, cellWithUnitsIdx, pathIdx))
+                  if (toCell.owner !== cellWithUnits.owner // do we not own the cell already
+                      && toCell.units < unitsLeftToMove // can we claim the cell
+                  ) {
+                     predecessors.iteratePath(toIdx, (pathIdx, cellPathType) => {
+                        // take first step towards target cell as action target
+                        if (cellPathType === EPathCellType.PathCellIntermediate) {
+                           moveActionSet.push(moveAction(1, cellWithUnitsIdx, pathIdx))
+                           unitsLeftToMove--
+                           return false
                         }
                      })
+                     if (unitsLeftToMove === 0) {
+                        return false
+                     }
                   }
                   return true
                },
-               cell => cell.scrap > 0 && !cell.recycler)
-
-            unitsLeftToMove--
+               Cell.isPath)
          }
       }
    })
